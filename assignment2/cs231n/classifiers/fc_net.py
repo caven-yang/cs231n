@@ -47,13 +47,35 @@ class TwoLayerNet(object):
         # weights and biases using the keys 'W1' and 'b1' and second layer weights #
         # and biases using the keys 'W2' and 'b2'.                                 #
         ############################################################################
-        pass
+
+        # W1 maps (num_sample, input_dim) => (num_sample, hidden_dim)
+        # so W1 is of (input_dim, hidden_dim)
+        # b1 is a vector of hidden_dim
+
+        W1 = np.random.normal(0, weight_scale, (input_dim, hidden_dim))
+        b1 = np.zeros(hidden_dim)
+        
+        # W2 maps (num_sample, hidden_dim) => (num_sample, num_classes)
+        # so W2 is of (hidden_dim, num_classes)
+        # b2 is a vector of num_classes
+
+        W2 = np.random.normal(0, weight_scale, (hidden_dim, num_classes))
+        b2 = np.zeros(num_classes)
+
+        for k, v in [
+                ("W1", W1),
+                ("W2", W2),
+                ("b1", b1),
+                ("b2", b2),
+        ]:
+            self.params[k] = v
+
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
 
 
-    def loss(self, X, y=None):
+    def loss(self, X, y=None, debug=False):
         """
         Compute loss and gradient for a minibatch of data.
 
@@ -77,12 +99,18 @@ class TwoLayerNet(object):
         # TODO: Implement the forward pass for the two-layer net, computing the    #
         # class scores for X and storing them in the scores variable.              #
         ############################################################################
-        pass
+        W1, W2 = self.params.get("W1"), self.params.get("W2")
+        b1, b2 = self.params.get("b1"), self.params.get("b2")
+        (x1, x0_cached) = affine_forward(x=X, w=W1, b=b1)
+        (x1_relu, x1_relu_cached) = relu_forward(x=x1)
+        (x2, x1_cached) = affine_forward(x=x1_relu, w=W2, b=b2)
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
 
         # If y is None then we are in test mode so just return scores
+        scores = x2
         if y is None:
             return scores
 
@@ -97,7 +125,45 @@ class TwoLayerNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+
+        # compute the Softmax Loss
+        score_exp = np.exp(scores)
+        score_sum = np.sum(score_exp, axis = 1)
+
+        n_sample = scores.shape[0]
+        pred_masks = np.zeros(scores.shape)
+        for i in range(n_sample):
+            pred_masks[i][y[i]] = 1
+        masked_scores = pred_masks * scores
+
+        loss += (-1 * np.sum(masked_scores))
+        loss += (np.sum(np.log(score_sum)))
+        loss = loss / n_sample
+        
+        # regularization
+        losses = []
+        for reg_item in [W1, W2]:
+            losses.append(np.sum(reg_item * reg_item) )
+
+        loss += (sum(losses) * self.reg * .5)
+
+        # Finally let's compute the grads
+        
+        # Excluding the reg, d(loss)/dW2 = d(loss)/d(score) * d(score)/dW2
+        #    = d(loss) / d(score) * x1_cached 
+
+        (num_sample, num_classes) = scores.shape
+        score_div = np.transpose(score_exp) / np.broadcast_to(
+            score_sum,
+            (num_classes, num_sample)
+        )
+        score_div = np.transpose(score_div)  - pred_masks
+        (xx, ww, bb) = x1_cached
+        # import pdb; pdb.set_trace()
+        dW2 = np.matmul(np.transpose(xx), score_div) / num_sample
+        dW2 += self.reg * W2
+
+        grads["W2"] = dW2 
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
