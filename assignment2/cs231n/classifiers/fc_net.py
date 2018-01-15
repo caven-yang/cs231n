@@ -158,12 +158,31 @@ class TwoLayerNet(object):
             (num_classes, num_sample)
         )
         score_div = np.transpose(score_div)  - pred_masks
-        (xx, ww, bb) = x1_cached
-        # import pdb; pdb.set_trace()
-        dW2 = np.matmul(np.transpose(xx), score_div) / num_sample
+        (xx1, ww, bb) = x1_cached
+        dW2 = np.matmul(np.transpose(xx1), score_div) / num_sample
         dW2 += self.reg * W2
 
-        grads["W2"] = dW2 
+        grads["W2"] = dW2
+
+        db2 = np.matmul(np.ones((1,num_sample)), score_div) / num_sample
+        grads["b2"] = db2
+
+        diff_x = (xx1 - x1_relu_cached).copy()
+        diff_x[diff_x == 0] = 1
+        (xx0, ww, bb) = x0_cached
+        dW1 = np.matmul(W2, np.transpose(score_div))
+        dW1 = np.transpose(diff_x) * dW1 / num_sample
+
+        if debug == 'x':
+            import pdb; pdb.set_trace()
+
+        db1 = np.matmul(dW1, np.ones(num_sample)) 
+        dW1 = np.matmul(dW1, xx0)
+        dW1 = np.transpose(dW1) + self.reg * W1
+        
+        grads["W1"] = dW1
+        grads["b1"] = db1
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
