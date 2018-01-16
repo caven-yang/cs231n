@@ -127,25 +127,36 @@ class TwoLayerNet(object):
         ############################################################################
 
         # compute the Softmax Loss
-        score_exp = np.exp(scores)
-        score_sum = np.sum(score_exp, axis = 1)
+        max_scores = np.max(scores, axis = 1)
+        # normalized scores to prevent overflow
+        norm_scores = (scores.T - max_scores.T).T
+
+        score_exp, norm_score_exp = np.exp(scores), np.exp(norm_scores)
+        score_sum, norm_score_sum = np.sum(score_exp, axis = 1), np.sum(norm_score_exp, axis=1)
 
         n_sample = scores.shape[0]
         pred_masks = np.zeros(scores.shape)
         for i in range(n_sample):
             pred_masks[i][y[i]] = 1
-        masked_scores = pred_masks * scores
+        masked_scores, norm_masked_scores = pred_masks * scores, pred_masks * norm_scores
 
+        norm_loss = 0
         loss += (-1 * np.sum(masked_scores))
+        norm_loss += (-1 * np.sum(norm_masked_scores) - np.sum(max_scores))
+
         loss += (np.sum(np.log(score_sum)))
+        norm_loss += (np.sum(np.log(norm_score_sum) + max_scores))
+
         loss = loss / n_sample
-        
+        norm_loss = norm_loss / n_sample
+
         # regularization
         losses = []
         for reg_item in [W1, W2]:
             losses.append(np.sum(reg_item * reg_item) )
 
         loss += (sum(losses) * self.reg * .5)
+        norm_loss += (sum(losses) * self.reg * .5)
 
         # Finally let's compute the grads
         
@@ -158,20 +169,22 @@ class TwoLayerNet(object):
             (num_classes, num_sample)
         )
         score_div = np.transpose(score_div)  - pred_masks
+        norm_score_div = (norm_score_exp.T / norm_score_sum.T).T - pred_masks
+
         (xx1, ww, bb) = x1_cached
-        dW2 = np.matmul(np.transpose(xx1), score_div) / num_sample
+        dW2 = np.matmul(np.transpose(xx1), norm_score_div) / num_sample
         dW2 += self.reg * W2
 
         grads["W2"] = dW2
 
-        db2 = np.matmul(np.ones((1,num_sample)), score_div) / num_sample
+        db2 = np.matmul(np.ones((1,num_sample)), norm_score_div) / num_sample
 
         grads["b2"] = db2.reshape(b2.shape)
 
         diff_x = (xx1 - x1_relu_cached).copy()
         diff_x[diff_x == 0] = 1
         (xx0, ww, bb) = x0_cached
-        dW1 = np.matmul(W2, np.transpose(score_div))
+        dW1 = np.matmul(W2, np.transpose(norm_score_div))
         dW1 = np.transpose(diff_x) * dW1 / num_sample
         
         db1 = np.matmul(dW1, np.ones(num_sample)) 
@@ -191,7 +204,7 @@ class TwoLayerNet(object):
         #                             END OF YOUR CODE                             #
         ############################################################################
 
-        return loss, grads
+        return norm_loss, grads
 
 
 class FullyConnectedNet(object):
