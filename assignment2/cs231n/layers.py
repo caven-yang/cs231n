@@ -20,43 +20,19 @@ def affine_forward(x, w, b):
     - out: output, of shape (N, M)
     - cache: (x, w, b)
     """
+    out = None
     ###########################################################################
     # TODO: Implement the affine forward pass. Store the result in out. You   #
     # will need to reshape the input into rows.                               #
     ###########################################################################
-
-    # Step.1 let's compute D.
-    input_shape = x.shape
-    n_sample = x.shape[0]
-    dim = 1
-    for s in input_shape[1:]:
-        dim = dim * s
-
-    # Step.2 make x -> x_, a matrix of (N, D)
-    x_ = compress(x, n_sample=n_sample, dim=dim)
-    
-    # Step.3 compute out = x_ * w + b, where b is broadcast into (N, M)
-    out = np.matmul(x_, w) + b
-    
+    pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     cache = (x, w, b)
     return out, cache
 
-def compress(x, n_sample=None, dim=None):
-    if n_sample is None:
-        n_sample = x.shape[0]
-    if dim is None:
-        dim = 1
-        for s in x.shape[1:]:
-            dim = dim * s
-    return x.flatten().reshape((n_sample, dim))
 
-def decompress(x, model):
-    # decompress x into the same shape as model
-    return x.reshape(model.shape)
-    
 def affine_backward(dout, cache):
     """
     Computes the backward pass for an affine layer.
@@ -73,20 +49,11 @@ def affine_backward(dout, cache):
     - db: Gradient with respect to b, of shape (M,)
     """
     x, w, b = cache
+    dx, dw, db = None, None, None
     ###########################################################################
     # TODO: Implement the affine backward pass.                               #
     ###########################################################################
-    # step.1 compute the derivative
-    # d(out)/dx = d(out)/dx' * w 
-    # d(out)/dw = d(out)/dx' * x
-    # d(out)/db = d(out)/dx'
-    dx = np.matmul(dout, np.transpose(w))
-    dx = decompress(dx, x)
-    x_ = compress(x)
-    dw = np.matmul(np.transpose(dout), x_)
-    dw = np.transpose(dw)
-    db = np.matmul(np.ones(dout.shape[0]), dout)
-
+    pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -108,15 +75,11 @@ def relu_forward(x):
     ###########################################################################
     # TODO: Implement the ReLU forward pass.                                  #
     ###########################################################################
-
-    out = x.copy()
-    # so Relu cuts off if x < 0
-    out[out < 0] = 0
+    pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
     cache = x
-    # import pdb; pdb.set_trace()
     return out, cache
 
 
@@ -135,15 +98,7 @@ def relu_backward(dout, cache):
     ###########################################################################
     # TODO: Implement the ReLU backward pass.                                 #
     ###########################################################################
-
-    # if e > 0, dx = 1
-    # otherwise, dx = 0
-
-    dx = x.copy()
-    dx[dx >= 0] = 1
-    # note: it doesn't work if we swap the 2 assignings
-    dx[dx < 0] = 0
-    dx = dx * dout
+    pass
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################

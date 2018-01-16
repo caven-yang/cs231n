@@ -167,7 +167,7 @@ class Solver(object):
             self.optim_configs[p] = d
 
 
-    def _step(self, debug=False):
+    def _step(self):
         """
         Make a single gradient update. This is called by train() and should not
         be called manually.
@@ -179,7 +179,7 @@ class Solver(object):
         y_batch = self.y_train[batch_mask]
 
         # Compute loss and gradient
-        loss, grads = self.model.loss(X_batch, y_batch, debug=debug)
+        loss, grads = self.model.loss(X_batch, y_batch)
         self.loss_history.append(loss)
 
         # Perform a parameter update
@@ -263,14 +263,13 @@ class Solver(object):
         num_iterations = self.num_epochs * iterations_per_epoch
 
         for t in range(num_iterations):
-            debug = (self.verbose and t % self.print_every == 0)
-            self._step(debug=debug)
+            self._step()
 
             # Maybe print training loss
-            if debug:
+            if self.verbose and t % self.print_every == 0:
                 print('(Iteration %d / %d) loss: %f' % (
                        t + 1, num_iterations, self.loss_history[-1]))
-                
+
             # At the end of every epoch, increment the epoch counter and decay
             # the learning rate.
             epoch_end = (t + 1) % iterations_per_epoch == 0
