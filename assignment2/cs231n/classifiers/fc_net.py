@@ -38,7 +38,7 @@ class TwoLayerNet(object):
         """
         self.params = {}
         self.reg = reg
-
+        self.cache = {}
         ############################################################################
         # TODO: Initialize the weights and biases of the two-layer net. Weights    #
         # should be initialized from a Gaussian with standard deviation equal to   #
@@ -101,9 +101,9 @@ class TwoLayerNet(object):
         ############################################################################
         W1, W2 = self.params.get("W1"), self.params.get("W2")
         b1, b2 = self.params.get("b1"), self.params.get("b2")
-        (x1, x0_cached) = affine_forward(x=X, w=W1, b=b1)
-        (x1_relu, x1_relu_cached) = relu_forward(x=x1)
-        (x2, x1_cached) = affine_forward(x=x1_relu, w=W2, b=b2)
+        
+        hidden, self.cache['hidden'] = affine_relu_forward(X, W1, b1)
+        (x2, self.cache['out']) = affine_forward(x=hidden, w=W2, b=b2)
         
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -126,80 +126,28 @@ class TwoLayerNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
 
-        # compute the Softmax Loss
-        max_scores = np.max(scores, axis = 1)
-        # normalized scores to prevent overflow
-        norm_scores = (scores.T - max_scores.T).T
-
-        score_exp, norm_score_exp = np.exp(scores), np.exp(norm_scores)
-        score_sum, norm_score_sum = np.sum(score_exp, axis = 1), np.sum(norm_score_exp, axis=1)
-
-        n_sample = scores.shape[0]
-        pred_masks = np.zeros(scores.shape)
-        for i in range(n_sample):
-            pred_masks[i][y[i]] = 1
-        masked_scores, norm_masked_scores = pred_masks * scores, pred_masks * norm_scores
-
-        norm_loss = 0
-        loss += (-1 * np.sum(masked_scores))
-        norm_loss += (-1 * np.sum(norm_masked_scores) - np.sum(max_scores))
-
-        loss += (np.sum(np.log(score_sum)))
-        norm_loss += (np.sum(np.log(norm_score_sum) + max_scores))
-
-        loss = loss / n_sample
-        norm_loss = norm_loss / n_sample
+        norm_loss, delta3 = softmax_loss(scores, y)
 
         # regularization
         losses = []
         for reg_item in [W1, W2]:
             losses.append(np.sum(reg_item * reg_item) )
 
-        loss += (sum(losses) * self.reg * .5)
+        # loss += (sum(losses) * self.reg * .5)
         norm_loss += (sum(losses) * self.reg * .5)
-
+        
         # Finally let's compute the grads
         
         # Excluding the reg, d(loss)/dW2 = d(loss)/d(score) * d(score)/dW2
         #    = d(loss) / d(score) * x1_cached 
-
-        (num_sample, num_classes) = scores.shape
-        score_div = np.transpose(score_exp) / np.broadcast_to(
-            score_sum,
-            (num_classes, num_sample)
-        )
-        score_div = np.transpose(score_div)  - pred_masks
-        norm_score_div = (norm_score_exp.T / norm_score_sum.T).T - pred_masks
-
-        (xx1, ww, bb) = x1_cached
-        dW2 = np.matmul(np.transpose(xx1), norm_score_div) / num_sample
-        dW2 += self.reg * W2
-
-        grads["W2"] = dW2
-
-        db2 = np.matmul(np.ones((1,num_sample)), norm_score_div) / num_sample
-
-        grads["b2"] = db2.reshape(b2.shape)
-
-        diff_x = (xx1 - x1_relu_cached).copy()
-        diff_x[diff_x == 0] = 1
-        (xx0, ww, bb) = x0_cached
-        dW1 = np.matmul(W2, np.transpose(norm_score_div))
-        dW1 = np.transpose(diff_x) * dW1 / num_sample
         
-        db1 = np.matmul(dW1, np.ones(num_sample)) 
-        dW1 = np.matmul(
-            dW1,
-            decompress(
-                xx0,
-                model=np.zeros((xx0.shape[0], W1.shape[0]))
-            )
-        )
-        dW1 = np.transpose(dW1) + self.reg * W1
-        
-        grads["W1"] = dW1
-        grads["b1"] = db1
-        
+        # backpropagation
+        delta2, grads['W2'], grads['b2'] = affine_backward(delta3, self.cache['out'])
+        _, grads['W1'], grads['b1'] = affine_relu_backward(delta2, self.cache['hidden'])
+
+        # add gradient for regularization term
+        grads['W2'] += self.reg * W2
+        grads['W1'] += self.reg * W1
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
