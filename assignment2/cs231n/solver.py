@@ -132,7 +132,8 @@ class Solver(object):
         self.checkpoint_name = kwargs.pop('checkpoint_name', None)
         self.print_every = kwargs.pop('print_every', 10)
         self.verbose = kwargs.pop('verbose', True)
-
+        self.dbg = kwargs.pop('dbg', False)
+        
         # Throw an error if there are extra keyword arguments
         if len(kwargs) > 0:
             extra = ', '.join('"%s"' % k for k in list(kwargs.keys()))
@@ -302,5 +303,10 @@ class Solver(object):
                     for k, v in self.model.params.items():
                         self.best_params[k] = v.copy()
 
+
+        if self.dbg:
+            print('Final training accuracy = {}'.format(
+                self.train_acc_history[-1]
+            ))
         # At the end of training swap the best params into the model
         self.model.params = self.best_params

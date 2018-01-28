@@ -115,7 +115,6 @@ class TwoLayerNet(object):
 
         # first let's load the params
         w1, b1, w2, b2 = self.load_params()
-        # import pdb; pdb.set_trace()
         score_1, cache_s1 = affine_relu_forward(X, w1, b1)
         scores, cache_s2 = affine_relu_forward(score_1, w2, b2)
         
@@ -227,7 +226,38 @@ class FullyConnectedNet(object):
         # beta2, etc. Scale parameters should be initialized to one and shift      #
         # parameters should be initialized to zero.                                #
         ############################################################################
-        pass
+
+        num_hidden_dims = len(hidden_dims)
+        dim_tuples = []
+        for hidden_dim_index in range(num_hidden_dims + 1):
+            if hidden_dim_index == num_hidden_dims:
+                target_dim = num_classes
+            else:
+                target_dim = hidden_dims[hidden_dim_index]
+
+            if hidden_dim_index == 0:
+                src_dim = input_dim
+            else:
+                src_dim = hidden_dims[hidden_dim_index - 1]
+
+            dim_tuples.append((hidden_dim_index + 1, src_dim, target_dim))
+
+        # assigning in another loop to improve the readability of the code.
+        helpers = []
+        for (index, src_dim, target_dim) in dim_tuples:
+            w_key = "W{}".format(index)
+            b_key = "b{}".format(index)
+            helpers.append((index, w_key, b_key))
+            w = np.random.normal(
+                loc=0.0,
+                scale=weight_scale,
+                size=(src_dim, target_dim),
+            )
+            b = np.zeros((1, target_dim))
+            self.params[w_key] = w
+            self.params[b_key] = b
+
+        self.iter_helpers = helpers
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -285,7 +315,20 @@ class FullyConnectedNet(object):
         # self.bn_params[1] to the forward pass for the second batch normalization #
         # layer, etc.                                                              #
         ############################################################################
-        pass
+
+        scores_cache = [X]
+        caches = []
+        # used for computing regularized items
+        w_lookup = {}
+        for (index, w_key, b_key) in self.iter_helpers:
+            # complain loudly if missing key
+            w, b = self.params[w_key], self.params[b_key]
+            w_lookup[index] = w
+            x_ = scores_cache[-1]
+            scores, cache = affine_relu_forward(x_, w, b)
+            scores_cache.append(scores)
+            caches.append((index, cache))
+            
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -308,7 +351,27 @@ class FullyConnectedNet(object):
         # automated tests, make sure that your L2 regularization includes a factor #
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
-        pass
+
+        loss, dout = softmax_loss(scores, y)
+        # import pdb; pdb.set_trace()
+        for index, w in w_lookup.items():
+            loss += (np.sum(w * w) * self.reg * .5)
+            
+        # now let's compute the grads
+        cache_len = len(caches)
+
+        douts = [dout]
+        caches.reverse()
+        for (index, cache) in caches:
+            (dx, dw, db) = affine_relu_backward(douts[-1], cache)
+            dw += self.reg * w_lookup[index]
+            douts.append(dx)
+            w_key = "W{}".format(index)
+            b_key = "b{}".format(index)
+            grads[w_key] = dw
+            grads[b_key] = db
+            
+        
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
