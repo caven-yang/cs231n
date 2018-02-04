@@ -30,7 +30,6 @@ def affine_forward(x, w, b):
     dim_x = np.product(x.shape)
     x_ = np.reshape(x, (N, dim_x / N))
     out = np.matmul(x_, w)
-    # import pdb; pdb.set_trace()
     out += b
     ###########################################################################
     #                             END OF YOUR CODE                            #

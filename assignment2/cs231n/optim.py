@@ -102,7 +102,13 @@ def rmsprop(x, dx, config=None):
     # in the next_x variable. Don't forget to update cache value stored in    #
     # config['cache'].                                                        #
     ###########################################################################
-    pass
+    cache = config.get('cache')
+    decay_rate = config.get('decay_rate')
+    lr = config.get('learning_rate')
+    cache_ = decay_rate * cache + (1 - decay_rate) * dx ** 2
+    epsilon = config.get('epsilon')
+    next_x = x + ( -1 * lr * dx / (np.sqrt(cache_) + epsilon))
+    config['cache'] = cache_
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -139,7 +145,17 @@ def adam(x, dx, config=None):
     # the next_x variable. Don't forget to update the m, v, and t variables   #
     # stored in config.                                                       #
     ###########################################################################
-    pass
+    beta1, beta2 = config.get('beta1'), config.get('beta2')
+    m, v = config.get('m'), config.get('v')
+    t = config.get('t')
+    m_ = beta1 * m + ( 1 - beta1 ) * dx
+    mt = m_ / ( 1 - beta1 ** t)
+    v_ = beta2 * v + ( 1 - beta2) * (dx ** 2)
+    lr = config.get('learning_rate')
+    epsilon = config.get('epsilon')
+    vt = v_ / ( 1 - beta2 ** t)
+    next_x = x - lr * mt / (np.sqrt(vt) + epsilon)
+    config['m'], config['v'] = m_, v_
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
